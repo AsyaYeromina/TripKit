@@ -8,20 +8,25 @@ import {
   Cloud,
   CloudRain,
   CloudSun,
+  CarFront,
   Link2,
   Luggage,
   CalendarClock,
+  PlugZap,
   Sun,
+  Zap,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { useCountry } from '@/features/brief/hooks/useCountry';
 import { useWeather } from '@/features/brief/hooks/useWeather';
+import { getCountryEssentials } from '@/features/brief/utils/countryEssentials';
 import { getPackingPlan, type LuggageType } from '@/features/brief/utils/packingLogic';
 import { cn } from '@/lib/utils';
 import { fetchTripData } from '@/testing/mockData';
-import type { DestinationIntel, QualityScores, Trip, TripType, WeatherDay } from '@/types';
+import type { QualityScores, Trip, TripType, WeatherDay } from '@/types';
 import { getFlagEmoji } from '@/utils/flagEmoji';
 
 const tripTypeBadgeColors: Record<TripType, string> = {
@@ -83,17 +88,25 @@ function LuggageIcon({ type }: { type: LuggageType }) {
 }
 
 export function TripCard({ trip }: { trip: Trip }) {
-  const [data, setData] = useState<{
-    intel: DestinationIntel;
+  const scoreRequestKey = [
+    trip.city,
+    trip.countryCode,
+    trip.startDate,
+    trip.endDate,
+    trip.type,
+  ].join(':');
+  const [scoreState, setScoreState] = useState<{
+    requestKey: string;
     scores: QualityScores;
     budgetEstimate: number;
   } | null>(null);
-  const [loading, setLoading] = useState(true);
 
   const startDate = parseISO(trip.startDate)
   const endDate = parseISO(trip.endDate)
   const duration = differenceInDays(endDate, startDate) + 1;
   const dateRange = `${format(startDate, 'MMM d')} – ${format(endDate, 'MMM d, yyyy')}`;
+  const country = useCountry(trip.countryCode, trip.timezone);
+  const essentials = getCountryEssentials(trip.countryCode);
   const weather = useWeather({
     latitude: trip.latitude,
     longitude: trip.longitude,
@@ -105,15 +118,29 @@ export function TripCard({ trip }: { trip: Trip }) {
     : null;
 
   useEffect(() => {
-    setLoading(true);
-    setData(null);
-    fetchTripData(trip.city, trip.countryCode, startDate, endDate, trip.type).then(
+    let isCurrentRequest = true;
+    const requestStartDate = parseISO(trip.startDate);
+    const requestEndDate = parseISO(trip.endDate);
+
+    fetchTripData(trip.city, trip.countryCode, requestStartDate, requestEndDate, trip.type).then(
       (result) => {
-        setData(result);
-        setLoading(false);
+        if (!isCurrentRequest) {
+          return;
+        }
+
+        setScoreState({
+          requestKey: scoreRequestKey,
+          ...result,
+        });
       }
     );
-  }, [trip]);
+    return () => {
+      isCurrentRequest = false;
+    };
+  }, [scoreRequestKey, trip.city, trip.countryCode, trip.endDate, trip.startDate, trip.type]);
+
+  const data = scoreState?.requestKey === scoreRequestKey ? scoreState : null;
+  const loading = !data;
 
   return (
     <div className="h-full overflow-auto">
@@ -243,41 +270,69 @@ export function TripCard({ trip }: { trip: Trip }) {
           </CardContent>
         </Card>
 
-        {/* Destination Intel */}
+        {/* Destination Snapshot */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Destination Intel</CardTitle>
+            <CardTitle className="text-lg">Destination Snapshot</CardTitle>
           </CardHeader>
           <CardContent>
-            {loading ? (
+            {country.isLoading ? (
               <div className="grid grid-cols-2 gap-4">
                 {Array.from({ length: 4 }).map((_, i) => (
                   <Skeleton key={i} className="h-20 rounded-lg" />
                 ))}
               </div>
+            ) : country.error ? (
+              <p className="text-sm text-muted-foreground">{country.error}</p>
             ) : (
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-4 bg-muted rounded-lg">
                   <div className="text-2xl mb-1">💶</div>
                   <div className="text-sm text-muted-foreground">Currency</div>
                   <div className="font-semibold">
-                    {data?.intel.currency} ({data?.intel.currencySymbol})
+                    {country.data?.currency} ({country.data?.currencySymbol})
                   </div>
                 </div>
                 <div className="p-4 bg-muted rounded-lg">
                   <div className="text-2xl mb-1">🗣️</div>
                   <div className="text-sm text-muted-foreground">Language</div>
-                  <div className="font-semibold">{data?.intel.language}</div>
+                  <div className="font-semibold">{country.data?.language}</div>
                 </div>
                 <div className="p-4 bg-muted rounded-lg">
                   <div className="text-2xl mb-1">🕐</div>
                   <div className="text-sm text-muted-foreground">Timezone</div>
-                  <div className="font-semibold">{data?.intel.timezone}</div>
+                  <div className="font-semibold">{country.data?.timezone}</div>
+                  <div className="text-sm text-muted-foreground">
+                    Current time: {country.data?.currentTime}
+                  </div>
                 </div>
                 <div className="p-4 bg-muted rounded-lg">
-                  <div className="text-2xl mb-1">🚨</div>
-                  <div className="text-sm text-muted-foreground">Emergency</div>
-                  <div className="font-semibold">{data?.intel.emergencyNumber}</div>
+                  <div className="flex items-center gap-2 mb-2 text-primary">
+                    <PlugZap className="h-5 w-5" />
+                    <Zap className="h-5 w-5" />
+                    <CarFront className="h-5 w-5" />
+                  </div>
+                  <div className="text-sm text-muted-foreground">Travel Essentials</div>
+                  {essentials ? (
+                    <div className="mt-1 space-y-1 text-sm">
+                      <div>
+                        <span className="text-muted-foreground">Plug:</span>{' '}
+                        <span className="font-semibold">{essentials.plug}</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Voltage:</span>{' '}
+                        <span className="font-semibold">{essentials.voltage}</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Driving:</span>{' '}
+                        <span className="font-semibold capitalize">{essentials.drive}</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Travel essentials are not available for this country yet.
+                    </p>
+                  )}
                 </div>
               </div>
             )}

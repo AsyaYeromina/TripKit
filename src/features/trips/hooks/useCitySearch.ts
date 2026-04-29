@@ -9,6 +9,7 @@ export interface CitySearchResult {
   admin1: string | null;
   latitude: number;
   longitude: number;
+  timezone: string | null;
 }
 
 interface CitySearchState {
@@ -29,6 +30,7 @@ interface OpenMeteoGeocodingResult {
   latitude: number;
   longitude: number;
   admin1?: string;
+  timezone?: string;
 }
 
 interface OpenMeteoGeocodingResponse {
@@ -56,7 +58,8 @@ function isOpenMeteoGeocodingResult(value: unknown): value is OpenMeteoGeocoding
     typeof value.country_code === 'string' &&
     typeof value.latitude === 'number' &&
     typeof value.longitude === 'number' &&
-    (typeof value.admin1 === 'string' || typeof value.admin1 === 'undefined')
+    (typeof value.admin1 === 'string' || typeof value.admin1 === 'undefined') &&
+    (typeof value.timezone === 'string' || typeof value.timezone === 'undefined')
   );
 }
 
@@ -85,6 +88,7 @@ function toCitySearchResult(result: OpenMeteoGeocodingResult): CitySearchResult 
     admin1: result.admin1?.trim() || null,
     latitude: result.latitude,
     longitude: result.longitude,
+    timezone: result.timezone?.trim() || null,
   };
 }
 

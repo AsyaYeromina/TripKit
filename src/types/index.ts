@@ -6,6 +6,7 @@ export interface Trip {
   countryCode: string;
   latitude?: number;
   longitude?: number;
+  timezone?: string;
   startDate: string;
   endDate: string;
   type: TripType;
@@ -26,7 +27,7 @@ export interface DestinationIntel {
   currencySymbol: string;
   language: string;
   timezone: string;
-  emergencyNumber: string;
+  currentTime: string;
 }
 
 export interface QualityScores {

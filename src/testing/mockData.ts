@@ -1,11 +1,14 @@
-import type { DestinationIntel, QualityScores, TripData, TripType } from '@/types';
+import type { QualityScores, TripType } from '@/types';
 
-type MockTripData = Omit<TripData, 'weather' | 'packingSuggestions'>;
+interface MockTripData {
+  scores: QualityScores;
+  budgetEstimate: number;
+}
 
 // Simulate fetching trip data with random delay
 export async function fetchTripData(
   _destination: string,
-  countryCode: string,
+  _countryCode: string,
   startDate: Date,
   endDate: Date,
   tripType: TripType
@@ -14,9 +17,6 @@ export async function fetchTripData(
   await new Promise((resolve) => setTimeout(resolve, 1500 + Math.random() * 1000));
 
   const days = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-
-  // Generate intel based on country
-  const intel = getIntelForCountry(countryCode);
 
   // Generate quality scores
   const scores: QualityScores = {
@@ -32,31 +32,7 @@ export async function fetchTripData(
   const budgetEstimate = Math.round(baseDailyCost * days * costMultiplier);
 
   return {
-    intel,
     scores,
     budgetEstimate,
-  };
-}
-
-function getIntelForCountry(countryCode: string): DestinationIntel {
-  const countryIntel: Record<string, DestinationIntel> = {
-    PT: { currency: 'Euro', currencySymbol: '€', language: 'Portuguese', timezone: 'WET (UTC+0)', emergencyNumber: '112' },
-    JP: { currency: 'Yen', currencySymbol: '¥', language: 'Japanese', timezone: 'JST (UTC+9)', emergencyNumber: '110' },
-    US: { currency: 'Dollar', currencySymbol: '$', language: 'English', timezone: 'Multiple', emergencyNumber: '911' },
-    FR: { currency: 'Euro', currencySymbol: '€', language: 'French', timezone: 'CET (UTC+1)', emergencyNumber: '112' },
-    IT: { currency: 'Euro', currencySymbol: '€', language: 'Italian', timezone: 'CET (UTC+1)', emergencyNumber: '112' },
-    ES: { currency: 'Euro', currencySymbol: '€', language: 'Spanish', timezone: 'CET (UTC+1)', emergencyNumber: '112' },
-    DE: { currency: 'Euro', currencySymbol: '€', language: 'German', timezone: 'CET (UTC+1)', emergencyNumber: '112' },
-    GB: { currency: 'Pound', currencySymbol: '£', language: 'English', timezone: 'GMT (UTC+0)', emergencyNumber: '999' },
-    TH: { currency: 'Baht', currencySymbol: '฿', language: 'Thai', timezone: 'ICT (UTC+7)', emergencyNumber: '191' },
-    AU: { currency: 'Dollar', currencySymbol: 'A$', language: 'English', timezone: 'AEST (UTC+10)', emergencyNumber: '000' },
-  };
-
-  return countryIntel[countryCode.toUpperCase()] || {
-    currency: 'Local Currency',
-    currencySymbol: '$',
-    language: 'Local Language',
-    timezone: 'Local Time',
-    emergencyNumber: '112',
   };
 }

@@ -80,6 +80,7 @@ export function NewTripForm() {
       countryCode: selectedCity.countryCode,
       latitude: selectedCity.latitude,
       longitude: selectedCity.longitude,
+      timezone: selectedCity.timezone ?? undefined,
       startDate: format(startDate, "yyyy-MM-dd"),
       endDate: format(endDate, "yyyy-MM-dd"),
       type: tripType,
