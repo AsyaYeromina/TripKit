@@ -4,6 +4,8 @@ export interface Trip {
   id: string;
   city: string;
   countryCode: string;
+  latitude?: number;
+  longitude?: number;
   startDate: string;
   endDate: string;
   type: TripType;
@@ -15,6 +17,8 @@ export interface WeatherDay {
   icon: 'sun' | 'cloud' | 'rain' | 'partly-cloudy';
   high: number;
   low: number;
+  precipitationSum: number;
+  uvIndexMax: number;
 }
 
 export interface DestinationIntel {

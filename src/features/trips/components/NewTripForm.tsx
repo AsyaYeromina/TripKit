@@ -78,6 +78,8 @@ export function NewTripForm() {
       id: crypto.randomUUID(),
       city: selectedCity.name,
       countryCode: selectedCity.countryCode,
+      latitude: selectedCity.latitude,
+      longitude: selectedCity.longitude,
       startDate: format(startDate, "yyyy-MM-dd"),
       endDate: format(endDate, "yyyy-MM-dd"),
       type: tripType,

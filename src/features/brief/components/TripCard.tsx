@@ -1,13 +1,27 @@
 import { useEffect, useState } from 'react';
 import { differenceInDays, format, parseISO } from 'date-fns';
-import { Link2, ClipboardCopy, CalendarDays, Sun, Cloud, CloudRain, CloudSun } from 'lucide-react';
+import {
+  Backpack,
+  BriefcaseBusiness,
+  CalendarDays,
+  ClipboardCopy,
+  Cloud,
+  CloudRain,
+  CloudSun,
+  Link2,
+  Luggage,
+  CalendarClock,
+  Sun,
+} from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { useWeather } from '@/features/brief/hooks/useWeather';
+import { getPackingPlan, type LuggageType } from '@/features/brief/utils/packingLogic';
 import { cn } from '@/lib/utils';
 import { fetchTripData } from '@/testing/mockData';
-import type { Trip, TripData, TripType, WeatherDay } from '@/types';
+import type { DestinationIntel, QualityScores, Trip, TripType, WeatherDay } from '@/types';
 import { getFlagEmoji } from '@/utils/flagEmoji';
 
 const tripTypeBadgeColors: Record<TripType, string> = {
@@ -56,14 +70,39 @@ function formatTripType(type: TripType) {
   return type[0].toUpperCase() + type.slice(1)
 }
 
+function LuggageIcon({ type }: { type: LuggageType }) {
+  if (type === 'backpack') {
+    return <Backpack className="h-5 w-5 text-primary" />;
+  }
+
+  if (type === 'small-suitcase') {
+    return <Luggage className="h-5 w-5 text-primary" />;
+  }
+
+  return <BriefcaseBusiness className="h-5 w-5 text-primary" />;
+}
+
 export function TripCard({ trip }: { trip: Trip }) {
-  const [data, setData] = useState<TripData | null>(null);
+  const [data, setData] = useState<{
+    intel: DestinationIntel;
+    scores: QualityScores;
+    budgetEstimate: number;
+  } | null>(null);
   const [loading, setLoading] = useState(true);
 
   const startDate = parseISO(trip.startDate)
   const endDate = parseISO(trip.endDate)
   const duration = differenceInDays(endDate, startDate) + 1;
   const dateRange = `${format(startDate, 'MMM d')} – ${format(endDate, 'MMM d, yyyy')}`;
+  const weather = useWeather({
+    latitude: trip.latitude,
+    longitude: trip.longitude,
+    startDate: trip.startDate,
+    endDate: trip.endDate,
+  });
+  const packingPlan = weather.data
+    ? getPackingPlan(weather.data, trip.type, duration)
+    : null;
 
   useEffect(() => {
     setLoading(true);
@@ -124,7 +163,7 @@ export function TripCard({ trip }: { trip: Trip }) {
             <CardTitle className="text-lg">Weather Forecast</CardTitle>
           </CardHeader>
           <CardContent>
-            {loading ? (
+            {weather.isLoading ? (
               <div className="flex flex-col gap-4">
                 <div className="flex gap-3 overflow-hidden">
                   {Array.from({ length: 7 }).map((_, i) => (
@@ -136,11 +175,25 @@ export function TripCard({ trip }: { trip: Trip }) {
                   <Skeleton className="h-6 w-48" />
                 </div>
               </div>
+            ) : weather.error ? (
+              weather.errorType === 'forecast-unavailable' ? (
+                <div className="flex items-start gap-3 rounded-lg border bg-muted/40 p-4">
+                  <CalendarClock className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
+                  <div>
+                    <p className="font-medium">Weather forecast is not available yet</p>
+                    <p className="text-sm text-muted-foreground">
+                      More weather data will be available closer to your trip dates.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">{weather.error}</p>
+              )
             ) : (
               <>
                 <ScrollArea className="w-full whitespace-nowrap">
                   <div className="flex gap-3 pb-3">
-                    {data?.weather.map((day, i) => (
+                    {weather.data?.map((day, i) => (
                       <div
                         key={i}
                         className="flex flex-col items-center gap-1.5 p-3 bg-muted rounded-lg min-w-[64px]"
@@ -159,7 +212,7 @@ export function TripCard({ trip }: { trip: Trip }) {
                 <div className="mt-4 pt-4 border-t">
                   <h4 className="text-sm font-medium mb-2">Packing Suggestions</h4>
                   <div className="flex flex-wrap gap-2">
-                    {data?.packingSuggestions.map((suggestion, i) => (
+                    {packingPlan?.suggestions.map((suggestion, i) => (
                       <span
                         key={i}
                         className="px-3 py-1.5 bg-muted rounded-full text-sm text-muted-foreground"
@@ -168,6 +221,22 @@ export function TripCard({ trip }: { trip: Trip }) {
                       </span>
                     ))}
                   </div>
+                  {packingPlan && (
+                    <div className="mt-4 rounded-lg border bg-background p-4">
+                      <h4 className="text-sm font-medium mb-3">Luggage Recommendation</h4>
+                      <div className="flex items-start gap-3">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary/10">
+                          <LuggageIcon type={packingPlan.luggage.type} />
+                        </div>
+                        <div>
+                          <p className="font-medium">{packingPlan.luggage.title}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {packingPlan.luggage.description}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </>
             )}

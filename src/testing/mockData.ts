@@ -1,36 +1,22 @@
-import type { DestinationIntel, QualityScores, TripData, TripType, WeatherDay } from '@/types';
+import type { DestinationIntel, QualityScores, TripData, TripType } from '@/types';
+
+type MockTripData = Omit<TripData, 'weather' | 'packingSuggestions'>;
 
 // Simulate fetching trip data with random delay
 export async function fetchTripData(
   _destination: string,
-  country: string,
+  countryCode: string,
   startDate: Date,
   endDate: Date,
   tripType: TripType
-): Promise<TripData> {
+): Promise<MockTripData> {
   // Simulate API delay
   await new Promise((resolve) => setTimeout(resolve, 1500 + Math.random() * 1000));
 
   const days = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-  
-  // Generate weather data
-  const weather: WeatherDay[] = [];
-  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  const icons: WeatherDay['icon'][] = ['sun', 'cloud', 'rain', 'partly-cloudy'];
-  
-  for (let i = 0; i < Math.min(days, 7); i++) {
-    const date = new Date(startDate);
-    date.setDate(date.getDate() + i);
-    weather.push({
-      day: dayNames[date.getDay()],
-      icon: icons[Math.floor(Math.random() * icons.length)],
-      high: Math.floor(20 + Math.random() * 15),
-      low: Math.floor(10 + Math.random() * 10),
-    });
-  }
 
   // Generate intel based on country
-  const intel = getIntelForCountry(country);
+  const intel = getIntelForCountry(countryCode);
 
   // Generate quality scores
   const scores: QualityScores = {
@@ -45,15 +31,10 @@ export async function fetchTripData(
   const baseDailyCost = 60 + (100 - scores.costOfLiving) * 0.8;
   const budgetEstimate = Math.round(baseDailyCost * days * costMultiplier);
 
-  // Generate packing suggestions
-  const packingSuggestions = getPackingSuggestions(weather, tripType);
-
   return {
-    weather,
     intel,
     scores,
     budgetEstimate,
-    packingSuggestions,
   };
 }
 
@@ -78,23 +59,4 @@ function getIntelForCountry(countryCode: string): DestinationIntel {
     timezone: 'Local Time',
     emergencyNumber: '112',
   };
-}
-
-function getPackingSuggestions(weather: WeatherDay[], tripType: TripType): string[] {
-  const suggestions: string[] = [];
-  
-  const hasRain = weather.some((w) => w.icon === 'rain');
-  const hasSun = weather.some((w) => w.icon === 'sun');
-  const avgHigh = weather.reduce((sum, w) => sum + w.high, 0) / weather.length;
-  
-  if (hasRain) suggestions.push('☂️ Bring an umbrella');
-  if (hasSun && avgHigh > 25) suggestions.push('🧴 Sunscreen recommended');
-  if (avgHigh < 15) suggestions.push('🧥 Pack warm layers');
-  if (avgHigh > 25) suggestions.push('👕 Light clothing advised');
-  
-  if (tripType === 'business') suggestions.push('👔 Business attire needed');
-  if (tripType === 'adventure') suggestions.push('🥾 Comfortable walking shoes');
-  if (tripType === 'leisure') suggestions.push('📸 Don\'t forget your camera');
-  
-  return suggestions.slice(0, 4);
 }
