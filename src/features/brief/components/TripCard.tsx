@@ -5,10 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
-import { getCountryFromCity, getFlagForCountryCode } from '@/config/countryData';
 import { cn } from '@/lib/utils';
 import { fetchTripData } from '@/testing/mockData';
 import type { Trip, TripData, TripType, WeatherDay } from '@/types';
+import { getFlagEmoji } from '@/utils/flagEmoji';
 
 const tripTypeBadgeColors: Record<TripType, string> = {
   leisure: 'bg-violet-100 text-violet-700',
@@ -68,7 +68,7 @@ export function TripCard({ trip }: { trip: Trip }) {
   useEffect(() => {
     setLoading(true);
     setData(null);
-    fetchTripData(trip.city, getCountryFromCity(trip.city), startDate, endDate, trip.type).then(
+    fetchTripData(trip.city, trip.countryCode, startDate, endDate, trip.type).then(
       (result) => {
         setData(result);
         setLoading(false);
@@ -85,7 +85,7 @@ export function TripCard({ trip }: { trip: Trip }) {
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
               <div>
                 <div className="flex items-center gap-3 mb-2">
-                  <span className="text-4xl">{getFlagForCountryCode(trip.countryCode)}</span>
+                  <span className="text-4xl">{getFlagEmoji(trip.countryCode)}</span>
                   <h1 className="text-3xl font-bold">{trip.city}</h1>
                 </div>
                 <p className="text-muted-foreground mb-3">

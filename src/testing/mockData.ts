@@ -57,21 +57,21 @@ export async function fetchTripData(
   };
 }
 
-function getIntelForCountry(country: string): DestinationIntel {
+function getIntelForCountry(countryCode: string): DestinationIntel {
   const countryIntel: Record<string, DestinationIntel> = {
-    'Portugal': { currency: 'Euro', currencySymbol: '€', language: 'Portuguese', timezone: 'WET (UTC+0)', emergencyNumber: '112' },
-    'Japan': { currency: 'Yen', currencySymbol: '¥', language: 'Japanese', timezone: 'JST (UTC+9)', emergencyNumber: '110' },
-    'United States': { currency: 'Dollar', currencySymbol: '$', language: 'English', timezone: 'Multiple', emergencyNumber: '911' },
-    'France': { currency: 'Euro', currencySymbol: '€', language: 'French', timezone: 'CET (UTC+1)', emergencyNumber: '112' },
-    'Italy': { currency: 'Euro', currencySymbol: '€', language: 'Italian', timezone: 'CET (UTC+1)', emergencyNumber: '112' },
-    'Spain': { currency: 'Euro', currencySymbol: '€', language: 'Spanish', timezone: 'CET (UTC+1)', emergencyNumber: '112' },
-    'Germany': { currency: 'Euro', currencySymbol: '€', language: 'German', timezone: 'CET (UTC+1)', emergencyNumber: '112' },
-    'United Kingdom': { currency: 'Pound', currencySymbol: '£', language: 'English', timezone: 'GMT (UTC+0)', emergencyNumber: '999' },
-    'Thailand': { currency: 'Baht', currencySymbol: '฿', language: 'Thai', timezone: 'ICT (UTC+7)', emergencyNumber: '191' },
-    'Australia': { currency: 'Dollar', currencySymbol: 'A$', language: 'English', timezone: 'AEST (UTC+10)', emergencyNumber: '000' },
+    PT: { currency: 'Euro', currencySymbol: '€', language: 'Portuguese', timezone: 'WET (UTC+0)', emergencyNumber: '112' },
+    JP: { currency: 'Yen', currencySymbol: '¥', language: 'Japanese', timezone: 'JST (UTC+9)', emergencyNumber: '110' },
+    US: { currency: 'Dollar', currencySymbol: '$', language: 'English', timezone: 'Multiple', emergencyNumber: '911' },
+    FR: { currency: 'Euro', currencySymbol: '€', language: 'French', timezone: 'CET (UTC+1)', emergencyNumber: '112' },
+    IT: { currency: 'Euro', currencySymbol: '€', language: 'Italian', timezone: 'CET (UTC+1)', emergencyNumber: '112' },
+    ES: { currency: 'Euro', currencySymbol: '€', language: 'Spanish', timezone: 'CET (UTC+1)', emergencyNumber: '112' },
+    DE: { currency: 'Euro', currencySymbol: '€', language: 'German', timezone: 'CET (UTC+1)', emergencyNumber: '112' },
+    GB: { currency: 'Pound', currencySymbol: '£', language: 'English', timezone: 'GMT (UTC+0)', emergencyNumber: '999' },
+    TH: { currency: 'Baht', currencySymbol: '฿', language: 'Thai', timezone: 'ICT (UTC+7)', emergencyNumber: '191' },
+    AU: { currency: 'Dollar', currencySymbol: 'A$', language: 'English', timezone: 'AEST (UTC+10)', emergencyNumber: '000' },
   };
 
-  return countryIntel[country] || {
+  return countryIntel[countryCode.toUpperCase()] || {
     currency: 'Local Currency',
     currencySymbol: '$',
     language: 'Local Language',

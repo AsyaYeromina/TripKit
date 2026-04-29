@@ -13,10 +13,10 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { getFlagForCountryCode } from '@/config/countryData';
 import { useTrips } from '@/features/trips/hooks/useTrips';
 import { cn } from '@/lib/utils';
 import type { Trip, TripType } from '@/types';
+import { getFlagEmoji } from '@/utils/flagEmoji';
 
 const tripTypeColors: Record<TripType, string> = {
   leisure: 'bg-violet-500/20 text-violet-300',
@@ -46,7 +46,7 @@ function TripListItem({ trip, isSelected }: { trip: Trip; isSelected: boolean })
       <div className="flex items-start justify-between">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className="text-lg">{getFlagForCountryCode(trip.countryCode)}</span>
+            <span className="text-lg">{getFlagEmoji(trip.countryCode)}</span>
             <span className="font-semibold text-sidebar-foreground truncate">
               {trip.city}
             </span>
