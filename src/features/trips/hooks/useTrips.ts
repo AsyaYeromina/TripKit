@@ -61,6 +61,9 @@ function isTrip(value: unknown): value is Trip {
     typeof trip.id === 'string' &&
     typeof trip.city === 'string' &&
     typeof trip.countryCode === 'string' &&
+    (typeof trip.latitude === 'number' || typeof trip.latitude === 'undefined') &&
+    (typeof trip.longitude === 'number' || typeof trip.longitude === 'undefined') &&
+    (typeof trip.timezone === 'string' || typeof trip.timezone === 'undefined') &&
     typeof trip.startDate === 'string' &&
     typeof trip.endDate === 'string' &&
     typeof trip.createdAt === 'string' &&

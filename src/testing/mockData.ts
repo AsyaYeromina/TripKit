@@ -1,100 +1,220 @@
-import type { DestinationIntel, QualityScores, TripData, TripType, WeatherDay } from '@/types';
+import type { BudgetTierEstimate, BudgetTiers, QualityScores } from '@/types';
 
-// Simulate fetching trip data with random delay
-export async function fetchTripData(
-  _destination: string,
-  country: string,
-  startDate: Date,
-  endDate: Date,
-  tripType: TripType
-): Promise<TripData> {
-  // Simulate API delay
-  await new Promise((resolve) => setTimeout(resolve, 1500 + Math.random() * 1000));
+interface MockTripData {
+  scores: QualityScores;
+  budgetEstimate: BudgetTiers;
+}
 
-  const days = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-  
-  // Generate weather data
-  const weather: WeatherDay[] = [];
-  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  const icons: WeatherDay['icon'][] = ['sun', 'cloud', 'rain', 'partly-cloudy'];
-  
-  for (let i = 0; i < Math.min(days, 7); i++) {
-    const date = new Date(startDate);
-    date.setDate(date.getDate() + i);
-    weather.push({
-      day: dayNames[date.getDay()],
-      icon: icons[Math.floor(Math.random() * icons.length)],
-      high: Math.floor(20 + Math.random() * 15),
-      low: Math.floor(10 + Math.random() * 10),
-    });
+interface CountrySafetyContext {
+  region?: string;
+  subregion?: string;
+  borders?: string[];
+}
+
+const FALLBACK_COST_MULTIPLIER = 0.75;
+const FALLBACK_SAFETY_SCORE = 50;
+const RUSSIA_BORDER_SAFETY_PENALTY = 30;
+
+const countryCostIndex: Record<string, number> = {
+  CH: 1.45,
+  BM: 1.42,
+  IS: 1.25,
+  NO: 1.18,
+  DK: 1.12,
+  SG: 1.1,
+  US: 1,
+  AU: 0.98,
+  IE: 0.96,
+  NL: 0.92,
+  IL: 0.91,
+  CA: 0.89,
+  GB: 0.88,
+  DE: 0.87,
+  FR: 0.84,
+  AT: 0.83,
+  KR: 0.81,
+  IT: 0.76,
+  JP: 0.72,
+  ES: 0.72,
+  CZ: 0.68,
+  PT: 0.65,
+  GR: 0.64,
+  EE: 0.62,
+  PL: 0.58,
+  HU: 0.55,
+  MX: 0.52,
+  BR: 0.48,
+  CN: 0.45,
+  AR: 0.44,
+  TH: 0.42,
+  MY: 0.4,
+  TR: 0.38,
+  ZA: 0.37,
+  PH: 0.35,
+  VN: 0.34,
+  CO: 0.33,
+  ID: 0.32,
+  UA: 0.3,
+  EG: 0.28,
+  IN: 0.26,
+  PK: 0.22,
+  NG: 0.21,
+  BD: 0.2,
+};
+
+const countrySafetyScores: Record<string, number> = {
+  CH: 91,
+  BM: 82,
+  IS: 94,
+  NO: 90,
+  DK: 92,
+  SG: 95,
+  US: 70,
+  AU: 88,
+  IE: 86,
+  NL: 87,
+  IL: 67,
+  CA: 87,
+  GB: 82,
+  DE: 84,
+  FR: 78,
+  AT: 89,
+  KR: 83,
+  IT: 77,
+  JP: 94,
+  ES: 83,
+  CZ: 86,
+  PT: 88,
+  GR: 76,
+  EE: 84,
+  PL: 83,
+  HU: 78,
+  MX: 56,
+  BR: 52,
+  CN: 78,
+  AR: 62,
+  TH: 69,
+  MY: 73,
+  TR: 61,
+  ZA: 45,
+  PH: 55,
+  VN: 74,
+  CO: 53,
+  ID: 67,
+  UA: 42,
+  EG: 58,
+  IN: 57,
+  PK: 41,
+  NG: 38,
+  BD: 48,
+};
+
+const regionalSafety: {
+  regions: Record<string, number>;
+  subregions: Record<string, number>;
+} = {
+  regions: {
+    Europe: 82,
+    Oceania: 85,
+    Asia: 68,
+    Americas: 55,
+    Africa: 42,
+    Antarctic: 99,
+  },
+  subregions: {
+    'Northern Europe': 92,
+    'Western Europe': 85,
+    'Central Europe': 84,
+    'Southern Europe': 78,
+    'South-Eastern Asia': 65,
+    'Eastern Asia': 84,
+    'Southern Asia': 45,
+    'Northern America': 75,
+    'South America': 48,
+    'Central America': 42,
+    'Northern Africa': 45,
+    'Sub-Saharan Africa': 35,
+    'Australia and New Zealand': 88,
+    Polynesia: 70,
+  },
+};
+
+function normalizeCountryCode(countryCode: string) {
+  return countryCode.trim().toUpperCase();
+}
+
+function getCostMultiplier(countryCode: string) {
+  return countryCostIndex[normalizeCountryCode(countryCode)] ?? FALLBACK_COST_MULTIPLIER;
+}
+
+function getBaseSafetyScore(countryCode: string, safetyContext?: CountrySafetyContext) {
+  const normalizedCountryCode = normalizeCountryCode(countryCode);
+
+  if (countrySafetyScores[normalizedCountryCode]) {
+    return countrySafetyScores[normalizedCountryCode];
   }
 
-  // Generate intel based on country
-  const intel = getIntelForCountry(country);
+  if (safetyContext?.subregion && regionalSafety.subregions[safetyContext.subregion]) {
+    return regionalSafety.subregions[safetyContext.subregion];
+  }
 
-  // Generate quality scores
-  const scores: QualityScores = {
-    safety: Math.floor(60 + Math.random() * 40),
-    costOfLiving: Math.floor(30 + Math.random() * 60),
-    internetSpeed: Math.floor(50 + Math.random() * 50),
-    nightlife: Math.floor(40 + Math.random() * 55),
-  };
+  if (safetyContext?.region && regionalSafety.regions[safetyContext.region]) {
+    return regionalSafety.regions[safetyContext.region];
+  }
 
-  // Calculate budget estimate
-  const costMultiplier = tripType === 'business' ? 1.5 : tripType === 'adventure' ? 1.2 : 1;
-  const baseDailyCost = 60 + (100 - scores.costOfLiving) * 0.8;
-  const budgetEstimate = Math.round(baseDailyCost * days * costMultiplier);
+  return FALLBACK_SAFETY_SCORE;
+}
 
-  // Generate packing suggestions
-  const packingSuggestions = getPackingSuggestions(weather, tripType);
+function getSafetyScore(countryCode: string, safetyContext?: CountrySafetyContext) {
+  const baseSafetyScore = getBaseSafetyScore(countryCode, safetyContext);
+  const bordersRussia = safetyContext?.borders?.includes('RUS') ?? false;
+
+  if (!bordersRussia) {
+    return baseSafetyScore;
+  }
+
+  return Math.max(0, baseSafetyScore - RUSSIA_BORDER_SAFETY_PENALTY);
+}
+
+function calculateTier(dailyBaseCost: number, multiplier: number, days: number): BudgetTierEstimate {
+  const daily = Math.round(dailyBaseCost * multiplier);
 
   return {
-    weather,
-    intel,
+    daily,
+    total: daily * days,
+  };
+}
+
+function calculateTripTiers(countryCode: string, days: number): BudgetTiers {
+  const multiplier = getCostMultiplier(countryCode);
+
+  return {
+    budget: calculateTier(50, multiplier, days),
+    moderate: calculateTier(120, multiplier, days),
+    expensive: calculateTier(300, multiplier, days),
+  };
+}
+
+export async function fetchTripData(
+  _destination: string,
+  countryCode: string,
+  startDate: Date,
+  endDate: Date,
+  safetyContext?: CountrySafetyContext
+): Promise<MockTripData> {
+  await new Promise((resolve) => setTimeout(resolve, 500));
+  const days = Math.max(
+    1,
+    Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1
+  );
+
+  const scores: QualityScores = {
+    safety: getSafetyScore(countryCode, safetyContext),
+    costOfLiving: Math.min(100, Math.round(getCostMultiplier(countryCode) * 100)),
+  };
+
+  return {
     scores,
-    budgetEstimate,
-    packingSuggestions,
+    budgetEstimate: calculateTripTiers(countryCode, days),
   };
-}
-
-function getIntelForCountry(country: string): DestinationIntel {
-  const countryIntel: Record<string, DestinationIntel> = {
-    'Portugal': { currency: 'Euro', currencySymbol: '€', language: 'Portuguese', timezone: 'WET (UTC+0)', emergencyNumber: '112' },
-    'Japan': { currency: 'Yen', currencySymbol: '¥', language: 'Japanese', timezone: 'JST (UTC+9)', emergencyNumber: '110' },
-    'United States': { currency: 'Dollar', currencySymbol: '$', language: 'English', timezone: 'Multiple', emergencyNumber: '911' },
-    'France': { currency: 'Euro', currencySymbol: '€', language: 'French', timezone: 'CET (UTC+1)', emergencyNumber: '112' },
-    'Italy': { currency: 'Euro', currencySymbol: '€', language: 'Italian', timezone: 'CET (UTC+1)', emergencyNumber: '112' },
-    'Spain': { currency: 'Euro', currencySymbol: '€', language: 'Spanish', timezone: 'CET (UTC+1)', emergencyNumber: '112' },
-    'Germany': { currency: 'Euro', currencySymbol: '€', language: 'German', timezone: 'CET (UTC+1)', emergencyNumber: '112' },
-    'United Kingdom': { currency: 'Pound', currencySymbol: '£', language: 'English', timezone: 'GMT (UTC+0)', emergencyNumber: '999' },
-    'Thailand': { currency: 'Baht', currencySymbol: '฿', language: 'Thai', timezone: 'ICT (UTC+7)', emergencyNumber: '191' },
-    'Australia': { currency: 'Dollar', currencySymbol: 'A$', language: 'English', timezone: 'AEST (UTC+10)', emergencyNumber: '000' },
-  };
-
-  return countryIntel[country] || {
-    currency: 'Local Currency',
-    currencySymbol: '$',
-    language: 'Local Language',
-    timezone: 'Local Time',
-    emergencyNumber: '112',
-  };
-}
-
-function getPackingSuggestions(weather: WeatherDay[], tripType: TripType): string[] {
-  const suggestions: string[] = [];
-  
-  const hasRain = weather.some((w) => w.icon === 'rain');
-  const hasSun = weather.some((w) => w.icon === 'sun');
-  const avgHigh = weather.reduce((sum, w) => sum + w.high, 0) / weather.length;
-  
-  if (hasRain) suggestions.push('☂️ Bring an umbrella');
-  if (hasSun && avgHigh > 25) suggestions.push('🧴 Sunscreen recommended');
-  if (avgHigh < 15) suggestions.push('🧥 Pack warm layers');
-  if (avgHigh > 25) suggestions.push('👕 Light clothing advised');
-  
-  if (tripType === 'business') suggestions.push('👔 Business attire needed');
-  if (tripType === 'adventure') suggestions.push('🥾 Comfortable walking shoes');
-  if (tripType === 'leisure') suggestions.push('📸 Don\'t forget your camera');
-  
-  return suggestions.slice(0, 4);
 }

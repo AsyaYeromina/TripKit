@@ -4,6 +4,9 @@ export interface Trip {
   id: string;
   city: string;
   countryCode: string;
+  latitude?: number;
+  longitude?: number;
+  timezone?: string;
   startDate: string;
   endDate: string;
   type: TripType;
@@ -15,6 +18,8 @@ export interface WeatherDay {
   icon: 'sun' | 'cloud' | 'rain' | 'partly-cloudy';
   high: number;
   low: number;
+  precipitationSum: number;
+  uvIndexMax: number;
 }
 
 export interface DestinationIntel {
@@ -22,20 +27,33 @@ export interface DestinationIntel {
   currencySymbol: string;
   language: string;
   timezone: string;
-  emergencyNumber: string;
+  currentTime: string;
+  region: string;
+  subregion: string;
+  borders: string[];
+  flag: string;
 }
 
 export interface QualityScores {
   safety: number;
   costOfLiving: number;
-  internetSpeed: number;
-  nightlife: number;
+}
+
+export interface BudgetTierEstimate {
+  daily: number;
+  total: number;
+}
+
+export interface BudgetTiers {
+  budget: BudgetTierEstimate;
+  moderate: BudgetTierEstimate;
+  expensive: BudgetTierEstimate;
 }
 
 export interface TripData {
   weather: WeatherDay[];
   intel: DestinationIntel;
   scores: QualityScores;
-  budgetEstimate: number;
+  budgetEstimate: BudgetTiers;
   packingSuggestions: string[];
 }
