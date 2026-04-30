@@ -21,6 +21,10 @@ interface RestCountryResponse {
   currencies?: unknown;
   languages?: unknown;
   timezones?: unknown;
+  region?: unknown;
+  subregion?: unknown;
+  borders?: unknown;
+  flag?: unknown;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -38,6 +42,10 @@ function parseCountryResponse(value: unknown): RestCountryResponse {
     currencies: country.currencies,
     languages: country.languages,
     timezones: country.timezones,
+    region: country.region,
+    subregion: country.subregion,
+    borders: country.borders,
+    flag: country.flag,
   };
 }
 
@@ -84,6 +92,30 @@ function getTimezone(timezones: unknown): string {
   }
 
   return timezone;
+}
+
+function getRegion(region: unknown): string {
+  return typeof region === 'string' ? region : '';
+}
+
+function getSubregion(subregion: unknown): string {
+  return typeof subregion === 'string' ? subregion : '';
+}
+
+function getBorders(borders: unknown): string[] {
+  if (typeof borders === 'undefined') {
+    return [];
+  }
+
+  if (!Array.isArray(borders)) {
+    throw new Error('Country border data returned in an unexpected format.');
+  }
+
+  return borders.filter((border): border is string => typeof border === 'string');
+}
+
+function getFlag(flag: unknown): string {
+  return typeof flag === 'string' ? flag : '';
 }
 
 function getCurrentTimeForUtcOffset(timezone: string): string {
@@ -146,6 +178,10 @@ function mapCountryIntel(country: RestCountryResponse, ianaTimezone?: string): D
     language: getLanguage(country.languages),
     timezone,
     currentTime: currentTime ?? getCurrentTimeForUtcOffset(fallbackTimezone),
+    region: getRegion(country.region),
+    subregion: getSubregion(country.subregion),
+    borders: getBorders(country.borders),
+    flag: getFlag(country.flag),
   };
 }
 
@@ -166,7 +202,7 @@ export function useCountry(countryCode: string, ianaTimezone?: string): CountryS
 
     const controller = new AbortController();
     const params = new URLSearchParams({
-      fields: 'currencies,languages,timezones',
+      fields: 'currencies,languages,timezones,region,subregion,borders,flag',
     });
 
     fetch(`${REST_COUNTRIES_URL}/alpha/${encodeURIComponent(normalizedCountryCode)}?${params.toString()}`, {

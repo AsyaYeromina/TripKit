@@ -28,19 +28,32 @@ export interface DestinationIntel {
   language: string;
   timezone: string;
   currentTime: string;
+  region: string;
+  subregion: string;
+  borders: string[];
+  flag: string;
 }
 
 export interface QualityScores {
   safety: number;
   costOfLiving: number;
-  internetSpeed: number;
-  nightlife: number;
+}
+
+export interface BudgetTierEstimate {
+  daily: number;
+  total: number;
+}
+
+export interface BudgetTiers {
+  budget: BudgetTierEstimate;
+  moderate: BudgetTierEstimate;
+  expensive: BudgetTierEstimate;
 }
 
 export interface TripData {
   weather: WeatherDay[];
   intel: DestinationIntel;
   scores: QualityScores;
-  budgetEstimate: number;
+  budgetEstimate: BudgetTiers;
   packingSuggestions: string[];
 }

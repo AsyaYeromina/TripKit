@@ -5,10 +5,13 @@ import {
   BriefcaseBusiness,
   CalendarDays,
   ClipboardCopy,
+  Clock3,
   Cloud,
   CloudRain,
   CloudSun,
   CarFront,
+  Coins,
+  Languages,
   Link2,
   Luggage,
   CalendarClock,
@@ -26,8 +29,14 @@ import { getCountryEssentials } from '@/features/brief/utils/countryEssentials';
 import { getPackingPlan, type LuggageType } from '@/features/brief/utils/packingLogic';
 import { cn } from '@/lib/utils';
 import { fetchTripData } from '@/testing/mockData';
-import type { QualityScores, Trip, TripType, WeatherDay } from '@/types';
-import { getFlagEmoji } from '@/utils/flagEmoji';
+import type {
+  BudgetTierEstimate,
+  BudgetTiers,
+  QualityScores,
+  Trip,
+  TripType,
+  WeatherDay,
+} from '@/types';
 
 const tripTypeBadgeColors: Record<TripType, string> = {
   leisure: 'bg-violet-100 text-violet-700',
@@ -55,6 +64,8 @@ function getScoreColor(score: number): string {
 }
 
 function ScoreBar({ label, score }: { label: string; score: number }) {
+  const boundedScore = Math.max(0, Math.min(score, 100));
+
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex justify-between text-sm">
@@ -64,9 +75,29 @@ function ScoreBar({ label, score }: { label: string; score: number }) {
       <div className="h-2 bg-muted rounded-full overflow-hidden">
         <div
           className={cn('h-full rounded-full transition-all', getScoreColor(score))}
-          style={{ width: `${score}%` }}
+          style={{ width: `${boundedScore}%` }}
         />
       </div>
+    </div>
+  );
+}
+
+function BudgetTier({
+  label,
+  estimate,
+  duration,
+}: {
+  label: string;
+  estimate: BudgetTierEstimate;
+  duration: number;
+}) {
+  return (
+    <div className="rounded-lg bg-muted p-4">
+      <p className="text-sm text-muted-foreground">{label}</p>
+      <p className="mt-1 text-2xl font-bold text-primary">${estimate.total}</p>
+      <p className="mt-1 text-xs text-muted-foreground">
+        {duration} {duration === 1 ? 'day' : 'days'} x ${estimate.daily}/day
+      </p>
     </div>
   );
 }
@@ -98,7 +129,7 @@ export function TripCard({ trip }: { trip: Trip }) {
   const [scoreState, setScoreState] = useState<{
     requestKey: string;
     scores: QualityScores;
-    budgetEstimate: number;
+    budgetEstimate: BudgetTiers;
   } | null>(null);
 
   const startDate = parseISO(trip.startDate)
@@ -118,29 +149,52 @@ export function TripCard({ trip }: { trip: Trip }) {
     : null;
 
   useEffect(() => {
+    if (country.isLoading) {
+      return;
+    }
+
     let isCurrentRequest = true;
     const requestStartDate = parseISO(trip.startDate);
     const requestEndDate = parseISO(trip.endDate);
-
-    fetchTripData(trip.city, trip.countryCode, requestStartDate, requestEndDate, trip.type).then(
-      (result) => {
-        if (!isCurrentRequest) {
-          return;
+    const safetyContext = country.data
+      ? {
+          region: country.data.region,
+          subregion: country.data.subregion,
+          borders: country.data.borders,
         }
+      : undefined;
 
-        setScoreState({
-          requestKey: scoreRequestKey,
-          ...result,
-        });
+    fetchTripData(
+      trip.city,
+      trip.countryCode,
+      requestStartDate,
+      requestEndDate,
+      safetyContext
+    ).then((result) => {
+      if (!isCurrentRequest) {
+        return;
       }
-    );
+
+      setScoreState({
+        requestKey: scoreRequestKey,
+        ...result,
+      });
+    });
     return () => {
       isCurrentRequest = false;
     };
-  }, [scoreRequestKey, trip.city, trip.countryCode, trip.endDate, trip.startDate, trip.type]);
+  }, [
+    country.data,
+    country.isLoading,
+    scoreRequestKey,
+    trip.city,
+    trip.countryCode,
+    trip.endDate,
+    trip.startDate,
+    trip.type,
+  ]);
 
   const data = scoreState?.requestKey === scoreRequestKey ? scoreState : null;
-  const loading = !data;
 
   return (
     <div className="h-full overflow-auto">
@@ -151,7 +205,7 @@ export function TripCard({ trip }: { trip: Trip }) {
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
               <div>
                 <div className="flex items-center gap-3 mb-2">
-                  <span className="text-4xl">{getFlagEmoji(trip.countryCode)}</span>
+                  {country.data?.flag && <span className="text-4xl">{country.data.flag}</span>}
                   <h1 className="text-3xl font-bold">{trip.city}</h1>
                 </div>
                 <p className="text-muted-foreground mb-3">
@@ -287,19 +341,25 @@ export function TripCard({ trip }: { trip: Trip }) {
             ) : (
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-4 bg-muted rounded-lg">
-                  <div className="text-2xl mb-1">💶</div>
+                  <div className="mb-2 text-primary">
+                    <Coins className="h-5 w-5" />
+                  </div>
                   <div className="text-sm text-muted-foreground">Currency</div>
                   <div className="font-semibold">
                     {country.data?.currency} ({country.data?.currencySymbol})
                   </div>
                 </div>
                 <div className="p-4 bg-muted rounded-lg">
-                  <div className="text-2xl mb-1">🗣️</div>
+                  <div className="mb-2 text-primary">
+                    <Languages className="h-5 w-5" />
+                  </div>
                   <div className="text-sm text-muted-foreground">Language</div>
                   <div className="font-semibold">{country.data?.language}</div>
                 </div>
                 <div className="p-4 bg-muted rounded-lg">
-                  <div className="text-2xl mb-1">🕐</div>
+                  <div className="mb-2 text-primary">
+                    <Clock3 className="h-5 w-5" />
+                  </div>
                   <div className="text-sm text-muted-foreground">Timezone</div>
                   <div className="font-semibold">{country.data?.timezone}</div>
                   <div className="text-sm text-muted-foreground">
@@ -345,9 +405,9 @@ export function TripCard({ trip }: { trip: Trip }) {
             <CardTitle className="text-lg">Quality Scores</CardTitle>
           </CardHeader>
           <CardContent>
-            {loading ? (
+            {!data ? (
               <div className="flex flex-col gap-4">
-                {Array.from({ length: 4 }).map((_, i) => (
+                {Array.from({ length: 2 }).map((_, i) => (
                   <div key={i} className="flex flex-col gap-1.5">
                     <Skeleton className="h-4 w-24" />
                     <Skeleton className="h-2 w-full rounded-full" />
@@ -356,10 +416,8 @@ export function TripCard({ trip }: { trip: Trip }) {
               </div>
             ) : (
               <div className="flex flex-col gap-4">
-                <ScoreBar label="Safety" score={data?.scores.safety || 0} />
-                <ScoreBar label="Cost of Living" score={data?.scores.costOfLiving || 0} />
-                <ScoreBar label="Internet Speed" score={data?.scores.internetSpeed || 0} />
-                <ScoreBar label="Nightlife" score={data?.scores.nightlife || 0} />
+                <ScoreBar label="Safety" score={data.scores.safety} />
+                <ScoreBar label="Cost of Living" score={data.scores.costOfLiving} />
               </div>
             )}
           </CardContent>
@@ -371,19 +429,36 @@ export function TripCard({ trip }: { trip: Trip }) {
             <CardTitle className="text-lg">Budget Estimate</CardTitle>
           </CardHeader>
           <CardContent>
-            {loading ? (
+            {!data ? (
               <div className="flex flex-col gap-2">
-                <Skeleton className="h-10 w-48" />
-                <Skeleton className="h-4 w-72" />
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <Skeleton key={i} className="h-24 rounded-lg" />
+                  ))}
+                </div>
+                <Skeleton className="h-4 w-64" />
               </div>
             ) : (
               <>
-                <p className="text-4xl font-bold text-primary">
-                  ~€{data?.budgetEstimate?.toLocaleString()}
-                </p>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  <BudgetTier
+                    label="Budget"
+                    estimate={data.budgetEstimate.budget}
+                    duration={duration}
+                  />
+                  <BudgetTier
+                    label="Moderate"
+                    estimate={data.budgetEstimate.moderate}
+                    duration={duration}
+                  />
+                  <BudgetTier
+                    label="Expensive"
+                    estimate={data.budgetEstimate.expensive}
+                    duration={duration}
+                  />
+                </div>
                 <p className="text-sm text-muted-foreground mt-2">
-                  Based on cost of living index × {duration} days ×{' '}
-                  {trip.type} multiplier
+                  Estimated trip total from duration and country cost of living.
                 </p>
               </>
             )}
